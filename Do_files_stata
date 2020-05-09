@@ -1,0 +1,147 @@
+STOP
+********************************************************************************
+/*In case to avoid anyone who was working on other do-files trying to run the 
+codes of this do-file before saving their previous displays, it is better to 
+put a "STOP" at the very beginning of the codes. */
+********************************************************************************
+
+
+********************************************************************************
+/*PREREQUISITES 
+
+Create new directories named CODE, DATA, TEMP and WORK 
+The logfiles created by Stata will be stored in the CODE folder. 
+The data files downloaded will be stored in the DATA folder.
+All the temporary data will be saved into the TEMP folder.
+New datafiles expected will be saved into the WORK folder.
+
+DATA: You will need waves 4 & 7 of the UK Household Longitudinal Study (UKHLS). 
+Download the dataset "SN6614" from the UK Data Service
+(after registering and doing a request). 
+Make copies of “d_indresp.dta” and “g_indresp.dta” 
+under the directory DATA/UKHLS. 
+
+NOTE: Make sure that you change the name of the pathways to the documents
+ (the red bits of code below).
+***************************************************************************** */
+
+
+********************************************************************************
+/* I. Apply preliminary settings*/
+
+/*To clear all the display that could be confusing, it is always good to apply 
+preliminary settings by clearing any displays, and replacing the data folders 
+correctly if applicable. */
+
+version 16		//If older version of Stata could not run, try version 16 
+
+clear
+cls
+
+global data "D:/Desktop/Modules/Lab/QS904/DATA/"
+global temp "D:/Desktop/Modules/Lab/QS904/TEMP/"
+global work "D:/Desktop/Modules/Lab/QS904/WORK/"
+global code "D:/Desktop/Modules/Lab/QS904/CODE/"
+/*global directories settings allow further steps to use "$folder/" as shortcut
+when referring to a specific directory*/
+*For Mac computers, please use forward slashes in the directory.
+
+set more off, perm
+/*Tell Stata not to pause or display the more message forever. */
+capture log close
+/*Tell Stata to close any log files opened. */
+capture log using $code/logFile_assignment1.txt, replace text
+/*In order to provide a place to check the displays, create a log file and save
+it into the code folder. If the file existed, replace it. */
+********************************************************************************
+
+
+
+********************************************************************************
+*II. Combining two data files
+
+/*If the topic is about whether an individual’s sleeping quality is associated 
+with one’s gender, age and sleeping hours, we need indicators of sleeping 
+quality(d_slp_qual), gender(d_sex), age(d_dvage) and sleeping hours(d_hrs_slph),
+but we need to add the cross-wave person identifier (pidp). There are multiple 
+variables in the datafile, and by applying this command, only the 5 variables of
+the specific file will appear on the Variables window. */ 
+
+*  1. Combining data files in wide format
+/*	(a) Now start with the data files from Wave 4
+		specific variables are selected as mentioned
+		if existed then clear it and use the new one.
+		Then explore the data*/
+
+use pidp d_dvage d_sex d_hrs_slph d_slp_qual using "$data/UKHLS/d_indresp", clear
+describe
+
+/*	(b) Save the temporary data and we will need it later
+		if the file existed then replace it */
+
+save "$temp/d_indresp_wide", replace
+
+/*	(c) Now open data file from Wave 7 for the variables we are investigating*/
+
+use pidp g_dvage g_sex g_hrs_slph g_slp_qual using "$data/UKHLS/g_indresp", clear
+describe
+
+/*	(d) Combine the data according to the cross-wave person id (pdip) 
+		in both data files (1:1 match).
+		The data file currently opened (the master dataset)
+		will be merged with the temporary data file that we have saved 
+		(the using dataset) */
+
+merge 1:1 pidp using "$temp/d_indresp_wide"
+
+/*	(e) Demonstrate the outcome
+		Some respondents appear in Wave 4 only, others in Wave 7 only, 
+		while other respondents are matched between datasets.
+		Stata has generated a new variable '_merge' and use 1,2,3 to indicate
+		the three cases*/
+
+tab _merge
+	   
+/*	(f) Sort the data and check the structure in the data editor*/
+
+sort _merge			//sort the data
+browse				//display the data in the data editor
+
+/*	(g) We are going to keep the matched data only and drop the '_merge' variables*/
+      
+keep if _merge == 3		//if the value of '_merge' equals to 3, then we keep it
+tab _merge								//Check the output again
+browse									//display the data in the data editor
+
+capture drop _merge		//now drop the '_merge' variable
+/*if the variable '_merge' does not exist, the drop command may cause an error,
+the 'capture' option avoids unexpected errors when running the codes*/
+
+/*	(h) Sort the variables intuitively then check the data */
+			 
+order pidp d_dvage g_dvage d_sex g_sex d_hrs_slph g_hrs_slph d_slp_qual g_slp_qual 
+browse
+
+/*	(i) Save the merged dataset and delete temporary files no longer needed*/
+
+save $work/UKHLS_w4_7_merged_assignment, replace
+erase $temp/d_indresp_wide.dta
+
+******************************************************************************
+
+
+********************************************************************************
+/* III. Close the log file and exit. */
+
+log close		
+exit		
+*End Syntax
+********************************************************************************
+
+
+
+
+
+
+
+
